@@ -6,12 +6,69 @@
 
     <select id="buscarPorNombreUsuario" resultType="mx.uv.sicae.servicio_usuarios.modelo.Usuario">
         SELECT 
-            "idUsuario", "idRol", "idTipoUsuario", "idProgramaEducativo", 
-            "nombre", "apellidoPaterno", "usuario", "contrasena", 
-            "correo", "telefono", "claveUsuario", "estatus", 
-            "tiempoCreacion", "tiempoActualizacion"
+            "idUsuario", 
+            "idRol", 
+            "idTipoUsuario", 
+            "idProgramaEducativo", 
+            "nombre", 
+            "apellidoPaterno", 
+            "username" AS usuario, 
+            "password" AS contrasena, 
+            "email" AS correo, 
+            "telefono", 
+            "claveUsuario", 
+            "estatus", 
+            "tiempoCreacion", 
+            "tempoActualizacion" AS tiempoActualizacion
         FROM usuario 
-        WHERE usuario = #{usuario} AND estatus = true
+        WHERE "username" = #{usuario} AND "estatus" = '1'
     </select>
+    
+    <select id="buscarPorCorreo" resultType="mx.uv.sicae.servicio_usuarios.modelo.Usuario">
+        SELECT * FROM usuario WHERE "email" = #{correo}
+    </select>
+
+    <insert id="registrarUsuario" useGeneratedKeys="true" keyProperty="idUsuario" keyColumn="idUsuario">
+        INSERT INTO usuario (
+            "nombre", "apellidoPaterno", "apellidoMaterno", "claveUsuario", 
+            "email", "telefono", "username", "password", "estatus", 
+            "idRol", "idTipoUsuario", "idProgramaEducativo", "tiempoCreacion"
+        ) VALUES (
+            #{nombre}, #{apellidoPaterno}, #{apellidoMaterno}, #{claveUsuario},
+            #{correo}, #{telefono}, #{usuario}, #{contrasena}, '1',
+            #{idRol}, #{idTipoUsuario}, #{idProgramaEducativo}, CURRENT_TIMESTAMP
+        )
+    </insert>
+    
+    <select id="buscarPorId" resultType="mx.uv.sicae.servicio_usuarios.modelo.Usuario">
+        SELECT 
+            "idUsuario", "idRol", "idTipoUsuario", "idProgramaEducativo", 
+            "nombre", "apellidoPaterno", "apellidoMaterno", "username" AS usuario, 
+            "email" AS correo, "telefono", "claveUsuario", "estatus", 
+            "tiempoCreacion", "tempoActualizacion" AS tiempoActualizacion
+        FROM usuario 
+        WHERE "idUsuario" = #{idUsuario}
+    </select>
+
+    <update id="editarUsuario">
+        UPDATE usuario 
+        SET 
+            "idRol" = #{idRol},
+            "idTipoUsuario" = #{idTipoUsuario},
+            "idProgramaEducativo" = #{idProgramaEducativo},
+            "nombre" = #{nombre},
+            "apellidoPaterno" = #{apellidoPaterno},
+            "apellidoMaterno" = #{apellidoMaterno},
+            "email" = #{correo},
+            "telefono" = #{telefono},
+            "tempoActualizacion" = CURRENT_TIMESTAMP
+        WHERE "idUsuario" = #{idUsuario}
+    </update>
+
+    <update id="cambiarEstatus">
+        UPDATE usuario 
+        SET "estatus" = CASE WHEN "estatus" = B'1' THEN B'0' ELSE B'1' END
+        WHERE "idUsuario" = #{idUsuario}
+    </update>
 
 </mapper>

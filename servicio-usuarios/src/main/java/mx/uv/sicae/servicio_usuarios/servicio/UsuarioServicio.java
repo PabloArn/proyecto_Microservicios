@@ -68,13 +68,11 @@ public class UsuarioServicio {
     }
 
     public void editarUsuario(Usuario usuarioActualizado) {
-        // Validar que el usuario que intentan editar sí exista
         Usuario existente = usuarioRepositorio.buscarPorId(usuarioActualizado.getIdUsuario());
         if (existente == null) {
             throw new RuntimeException("El usuario no existe.");
         }
         
-        // Validación de correo duplicado: si el correo nuevo es distinto al que ya tenía, verificamos
         if (!existente.getCorreo().equals(usuarioActualizado.getCorreo())) {
             if (usuarioRepositorio.buscarPorCorreo(usuarioActualizado.getCorreo()) != null) {
                 throw new RuntimeException("El nuevo correo ya está registrado por otro usuario.");

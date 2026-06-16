@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mx.uv.sicae.servicio_vehiculos.repositorio.VehiculoRepositorio">
+
+    <select id="buscarPorPlaca" resultType="mx.uv.sicae.servicio_vehiculos.modelo.Vehiculo">
+        SELECT * FROM vehiculo WHERE placa = #{placa}
+    </select>
+
+    <select id="contarVehiculosActivos" resultType="int">
+        SELECT COUNT(*) FROM vehiculo 
+        WHERE idUsuario = #{idUsuario} AND estatus = b'1'
+    </select>
+
+    <select id="buscarVehiculosPorUsuario" resultType="mx.uv.sicae.servicio_vehiculos.modelo.Vehiculo">
+        SELECT 
+            v.idVehiculo,
+            v.idUsuario,
+            v.claveVehiculo,
+            v.idModelo,
+            v.placa,
+            v.color,
+            v.anio,
+            v.descripcion,
+            v.estatus,
+            mo.modelo AS modelo, 
+            ma.idMarca AS idMarca, 
+            ma.marca AS marca
+        FROM vehiculo v
+        INNER JOIN modelo mo ON v.idModelo = mo.idModelo
+        INNER JOIN marca ma ON mo.idMarca = ma.idMarca
+        WHERE v.idUsuario = #{idUsuario}
+    </select>
+
+    <insert id="registrarVehiculo" useGeneratedKeys="true" keyProperty="idVehiculo">
+        INSERT INTO vehiculo (idUsuario, claveVehiculo, idModelo, placa, color, anio, descripcion, estatus)
+        VALUES (#{idUsuario}, #{claveVehiculo}, #{idModelo}, #{placa}, #{color}, #{anio}, #{descripcion}, b'1')
+    </insert>
+
+    <update id="editarVehiculo">
+        UPDATE vehiculo 
+        SET 
+            idModelo = #{idModelo},
+            placa = #{placa},
+            color = #{color},
+            anio = #{anio},
+            descripcion = #{descripcion}
+        WHERE idVehiculo = #{idVehiculo} AND idUsuario = #{idUsuario}
+    </update>
+
+    <update id="cambiarEstatus">
+        UPDATE vehiculo 
+        SET estatus = CASE WHEN estatus = b'1' THEN b'0' ELSE b'1' END
+        WHERE idVehiculo = #{idVehiculo} AND idUsuario = #{idUsuario}
+    </update>
+
+</mapper>

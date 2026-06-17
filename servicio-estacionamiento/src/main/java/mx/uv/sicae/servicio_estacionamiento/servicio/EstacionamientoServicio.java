@@ -28,29 +28,22 @@ public class EstacionamientoServicio {
         return estacionamientoRepositorio.obtenerEspacios();
     }
 
+    // 2. REGISTRAR MOVIMIENTO (ENTRADA)
     public void registrarEntrada(Movimiento movimiento, String tokenCompleto) {
+        // Regla 1: Validar datos obligatorios básicos
         if (movimiento.getClaveUsuario() == null || movimiento.getPlaca() == null || movimiento.getIdEspacio() == null) {
             throw new RuntimeException("Error: Clave de usuario, placa y espacio son campos obligatorios.");
         }
 
+        // Configurar cabecera de seguridad para las llamadas HTTP internas
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", tokenCompleto);
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        Integer idUsuario;
-        try {
-            ResponseEntity<Map> respuestaUser = restTemplate.exchange(URL_USUARIOS + "/perfil", HttpMethod.GET, entity, Map.class);
-            Map<String, Object> datosUsuario = respuestaUser.getBody();
-            
-            if (datosUsuario == null || !(Boolean) datosUsuario.get("estatus")) {
-                throw new RuntimeException("El usuario no se encuentra activo en el sistema.");
-            }
-            idUsuario = (Integer) datosUsuario.get("idUsuario");
-        } catch (Exception e) {
-            throw new RuntimeException("Acceso denegado: Usuario inválido o inactivo en el sistema.");
-        }
-
+        // --- 1. LLAMADA AL MICROSERVICIO DE VEHÍCULOS (8082) PRIMERO ---
         Integer idVehiculo = null;
+        Integer idUsuarioExtraido = null; // Variable para atrapar el ID
+
         try {
             ResponseEntity<List> respuestaAutos = restTemplate.exchange(URL_VEHICULOS, HttpMethod.GET, entity, List.class);
             List<Map<String, Object>> misVehiculos = respuestaAutos.getBody();
@@ -59,9 +52,11 @@ public class EstacionamientoServicio {
             if (misVehiculos != null) {
                 for (Map<String, Object> auto : misVehiculos) {
                     if (movimiento.getPlaca().equalsIgnoreCase((String) auto.get("placa"))) {
-                        if ((Boolean) auto.get("estatus")) {
+                        String estatusStr = String.valueOf(auto.get("estatus"));
+                        if (estatusStr.equals("true") || estatusStr.equals("1")) {
                             vehiculoEncontradoYActivo = true;
                             idVehiculo = (Integer) auto.get("idVehiculo");
+                            idUsuarioExtraido = (Integer) auto.get("idUsuario");
                         }
                         break;
                     }
@@ -74,14 +69,26 @@ public class EstacionamientoServicio {
             throw new RuntimeException("Validación vehicular fallida: " + e.getMessage());
         }
 
+        // --- 2. LLAMADA AL MICROSERVICIO DE USUARIOS (8081) CON EL ID CORRECTO ---
+        try {
+            // Ahora sí, armamos la URL perfecta: /api/usuarios/perfil/1
+            ResponseEntity<Map> respuestaUser = restTemplate.exchange(URL_USUARIOS + "/perfil/" + idUsuarioExtraido, HttpMethod.GET, entity, Map.class);
+            Map<String, Object> datosUsuario = respuestaUser.getBody();
+            
+            if (datosUsuario == null || !(Boolean) datosUsuario.get("estatus")) {
+                throw new RuntimeException("El usuario no se encuentra activo en el sistema.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Acceso denegado: Usuario inválido o inactivo en el sistema.");
+        }
+
+        // Regla de Negocio Local 1: Verificar si el vehículo ya se encuentra dentro del estacionamiento
         Movimiento autoAdentro = estacionamientoRepositorio.obtenerMovimientoActivoPorVehiculo(idVehiculo);
         if (autoAdentro != null) {
             throw new RuntimeException("El vehículo ya se encuentra registrado dentro de las instalaciones.");
         }
-
-        int autosEstacionados = 0;
-        List<Espacio> todosLosEspacios = estacionamientoRepositorio.obtenerEspacios();
         
+        // Inyectar datos calculados internamente para persistir en la base de datos
         movimiento.setIdVehiculo(idVehiculo);
         movimiento.setTiempoEntrada(LocalDateTime.now());
         movimiento.setTiempoCreacion(LocalDateTime.now());
@@ -89,11 +96,13 @@ public class EstacionamientoServicio {
             movimiento.setTarifaHora(20.00); 
         }
 
+        // Persistir la entrada en MySQL
         estacionamientoRepositorio.registrarEntrada(movimiento);
         
+        // Cambiar estatus del cajón
         estacionamientoRepositorio.actualizarOcupacionEspacio(movimiento.getIdEspacio(), true);
     }
-
+    
     public Movimiento registrarSalida(String placa, String tokenCompleto) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", tokenCompleto);

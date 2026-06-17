@@ -10,18 +10,23 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 
+// @Component: Spring lo registra como bean y se puede inyectar con @Autowired
 @Component
 public class UtilidadJwt {
 
+    //Lo lee desde application properties
     @Value("${jwt.secret}")
     private String llaveTexto;
 
+    // El token expira después de 2 horas de generarlo
     private final long TIEMPO_EXPIRACION = 7200000;
 
+    // Crea la llave secreta HMAC-SHA a partir del texto
     private Key getLlaveSecreta() {
         return Keys.hmacShaKeyFor(llaveTexto.getBytes());
     }
 
+    // Se llama AL REGISTRAR UN USUARIO o AL INICIAR SESIÓN
     public String generarToken(Usuario usuario) {
         Date ahora = new Date();
         Date fechaExpiracion = new Date(ahora.getTime() + TIEMPO_EXPIRACION);
@@ -36,6 +41,7 @@ public class UtilidadJwt {
                 .compact();
     }
 
+    // Parsea el token y devuelve los datos dentro (subject, claims, fechas)
     public Claims extraerClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getLlaveSecreta())
@@ -44,6 +50,7 @@ public class UtilidadJwt {
                 .getBody();
     }
 
+    // Extrae idRol del token y verifica que sea == 1
     public boolean esAdmin(String token) {
         try {
             Integer idRol = extraerClaims(token).get("idRol", Integer.class);

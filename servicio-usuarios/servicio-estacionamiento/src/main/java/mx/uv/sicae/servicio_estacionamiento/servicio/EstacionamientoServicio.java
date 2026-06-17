@@ -15,41 +15,34 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class EstacionamientoServicio {
 
-    // Inyecta el repositorio — acceso a la Base de datos
     @Autowired
     private EstacionamientoRepositorio estacionamientoRepositorio;
 
-    // RestTemplate: cliente HTTP de Spring para hacer llamadas a los otros microservicios.
     @Autowired
     private RestTemplate restTemplate;
 
-    // URLs de los otros microservicios
     private final String URL_USUARIOS = "http://localhost:8081/api/usuarios";
     private final String URL_VEHICULOS = "http://localhost:8082/api/vehiculos";
 
-    //Obtiene y devuelve todos los espacios del almacenamiento
     public List<Espacio> consultarEspacios() {
         return estacionamientoRepositorio.obtenerEspacios();
     }
 
-    //REGISTRAR MOVIMIENTO (ENTRADA)
+    // 2. REGISTRAR MOVIMIENTO (ENTRADA)
     public void registrarEntrada(Movimiento movimiento, String tokenCompleto) {
-        // Antes de hacer cualquier llamada externa, verifica que llegaron los datos mínimos.
+        // Regla 1: Validar datos obligatorios básicos
         if (movimiento.getClaveUsuario() == null || movimiento.getPlaca() == null || movimiento.getIdEspacio() == null) {
             throw new RuntimeException("Error: Clave de usuario, placa y espacio son campos obligatorios.");
         }
 
-        // El token que recibió este endpoint se reenvía a los otros servicios
-        // para que también puedan validar que la petición está autenticada.
+        // Configurar cabecera de seguridad para las llamadas HTTP internas
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", tokenCompleto);
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        // ── LLAMADA 1: Microservicio de Vehículos
-        // GET /api/vehiculos : trae todos los vehículos del usuario autenticado
-        // Luego busca en la lista si la placa recibida coincide con alguno.
+        // --- 1. LLAMADA AL MICROSERVICIO DE VEHÍCULOS (8082) PRIMERO ---
         Integer idVehiculo = null;
-        Integer idUsuarioExtraido = null; 
+        Integer idUsuarioExtraido = null; // Variable para atrapar el ID
 
         try {
             ResponseEntity<List> respuestaAutos = restTemplate.exchange(URL_VEHICULOS, HttpMethod.GET, entity, List.class);
@@ -69,20 +62,16 @@ public class EstacionamientoServicio {
                     }
                 }
             }
-            // Si la placa no existe o el vehículo está inactivo, se rechaza la entrada
             if (!vehiculoEncontradoYActivo) {
                 throw new RuntimeException("El vehículo con placas " + movimiento.getPlaca() + " no pertenece a su cuenta o está inactivo.");
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error al validar el carro: " + e.getMessage());
+            throw new RuntimeException("Validación vehicular fallida: " + e.getMessage());
         }
 
-        // ── LLAMADA 2: Microservicio de Usuarios
-        // GET /api/usuarios/perfil/{id} → verifica que el usuario dueño del vehículo esté activo.
-        // Usa el idUsuario extraído del JSON del vehículo.
+        // --- 2. LLAMADA AL MICROSERVICIO DE USUARIOS (8081) CON EL ID CORRECTO ---
         try {
-           
-            
+            // Ahora sí, armamos la URL perfecta: /api/usuarios/perfil/1
             ResponseEntity<Map> respuestaUser = restTemplate.exchange(URL_USUARIOS + "/perfil/" + idUsuarioExtraido, HttpMethod.GET, entity, Map.class);
             Map<String, Object> datosUsuario = respuestaUser.getBody();
             
@@ -93,7 +82,7 @@ public class EstacionamientoServicio {
             throw new RuntimeException("Acceso denegado: Usuario inválido o inactivo en el sistema.");
         }
 
-        //Verificar si el vehículo ya se encuentra dentro del estacionamiento
+        // Regla de Negocio Local 1: Verificar si el vehículo ya se encuentra dentro del estacionamiento
         Movimiento autoAdentro = estacionamientoRepositorio.obtenerMovimientoActivoPorVehiculo(idVehiculo);
         if (autoAdentro != null) {
             throw new RuntimeException("El vehículo ya se encuentra registrado dentro de las instalaciones.");
@@ -110,20 +99,15 @@ public class EstacionamientoServicio {
         // Persistir la entrada en MySQL
         estacionamientoRepositorio.registrarEntrada(movimiento);
         
-        // Cambiar estatus del espacio
+        // Cambiar estatus del cajón
         estacionamientoRepositorio.actualizarOcupacionEspacio(movimiento.getIdEspacio(), true);
     }
     
-    //REGISTRAR MOVIMIENTO (SALIDA)
     public Movimiento registrarSalida(String placa, String tokenCompleto) {
-        
-        // El token que recibió este endpoint se reenvía a los otros servicios
-        // para que también puedan validar que la petición está autenticada.
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", tokenCompleto);
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        
-        
+
         ResponseEntity<List> respuestaAutos = restTemplate.exchange(URL_VEHICULOS, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> misVehiculos = respuestaAutos.getBody();
         Integer idVehiculo = null;
@@ -141,42 +125,31 @@ public class EstacionamientoServicio {
             throw new RuntimeException("No se encontró ningún vehículo asociado a su token con la placa: " + placa);
         }
 
-        // ── BUSCAR TICKET ABIERTO ──
-        // Obtiene el movimiento activo (tiempoSalida) para este vehículo.
-        // Si no existe, el vehículo no tiene entrada registrada.
         Movimiento movimientoActivo = estacionamientoRepositorio.obtenerMovimientoActivoPorVehiculo(idVehiculo);
         if (movimientoActivo == null) {
             throw new RuntimeException("Error: No se registra ninguna entrada activa para el vehículo especificado.");
         }
 
-        // Calcular el cobro
         LocalDateTime entrada = movimientoActivo.getTiempoEntrada();
         LocalDateTime salida = LocalDateTime.now(); 
         
-        // Duration.between() calcula la diferencia exacta entre dos LocalDateTime
         Duration duracion = Duration.between(entrada, salida);
         long minutosTotales = duracion.toMinutes();
         if (minutosTotales <= 0) minutosTotales = 1; 
 
-        // Math.ceil(): redondea hacia arriba al entero más cercano.
         int horasACobrar = (int) Math.ceil(minutosTotales / 60.0);
-        
-        // Costo = horas cobradas × tarifa que se guardó al momento de la entrada
         double costoFinal = horasACobrar * movimientoActivo.getTarifaHora();
 
-        // Completar el movimiento con los datos calculados
         movimientoActivo.setTiempoSalida(salida);
         movimientoActivo.setMinutosEstacionado((int) minutosTotales);
         movimientoActivo.setHorasCobradas(horasACobrar);
         movimientoActivo.setCostoTotal(costoFinal);
         movimientoActivo.setTiempoActualizacion(LocalDateTime.now());
 
-        // Para que haya persistencia
         estacionamientoRepositorio.registrarSalida(movimientoActivo);
 
         estacionamientoRepositorio.actualizarOcupacionEspacio(movimientoActivo.getIdEspacio(), false);
 
-        // Regresa el movimiento completo al controlador (con costoTotal calculado)
         return movimientoActivo;
     }
 }

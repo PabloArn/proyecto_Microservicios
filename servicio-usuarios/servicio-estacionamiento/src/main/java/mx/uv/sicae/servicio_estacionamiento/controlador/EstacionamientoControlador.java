@@ -15,16 +15,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/estacionamiento")
 public class EstacionamientoControlador {
 
-    // Inyecta el servicio
     @Autowired
     private EstacionamientoServicio estacionamientoServicio;
 
-    // GET: operación de solo lectura — consultar disponibilidad de espacios.
     @GetMapping("/espacios")
     public ResponseEntity<?> consultarEspacios(@RequestHeader("Authorization") String authHeader) {
         try {
-            // Validación mínima del token en el controlador:
-            // solo verifica que exista y empiece con "Bearer ".
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Acceso denegado: Token inválido.");
             }
@@ -37,16 +33,13 @@ public class EstacionamientoControlador {
         }
     }
 
-    // POST: registra la entrada de un vehículo.
     @PostMapping("/entrada")
     public ResponseEntity<?> registrarEntrada(
             @RequestHeader("Authorization") String authHeader, 
             @RequestBody Movimiento movimiento) {
         try {
-            // Delega toda la lógica al servicio 
             estacionamientoServicio.registrarEntrada(movimiento, authHeader);
             
-            // Construye la respuesta de éxito manualmente con un Map.
             Map<String, Object> respuestaExito = new HashMap<>();
             respuestaExito.put("mensaje", "Entrada registrada correctamente. La pluma ha sido levantada.");
             respuestaExito.put("idMovimiento", movimiento.getIdMovimiento());
@@ -62,16 +55,13 @@ public class EstacionamientoControlador {
         }
     }
 
-    // PUT: cierra el ticket de un vehículo
     @PutMapping("/salida/{placa}")
     public ResponseEntity<?> registrarSalida(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable String placa) {
         try {
-            // El servicio regresa el movimiento ya calculado y cerrado
             Movimiento ticketCerrado = estacionamientoServicio.registrarSalida(placa, authHeader);
             
-            // Construye el resumen completo del cobro para el cliente
             Map<String, Object> respuestaExito = new HashMap<>();
             respuestaExito.put("mensaje", "Salida procesada con éxito. Caja liberada.");
             respuestaExito.put("idMovimiento", ticketCerrado.getIdMovimiento());

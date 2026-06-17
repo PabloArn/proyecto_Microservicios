@@ -6,23 +6,16 @@ import mx.uv.sicae.servicio_estacionamiento.modelo.Movimiento;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-// @Mapper: le dice a MyBatis que esta interfaz es un mapper de la base de datos.
 @Mapper
 public interface EstacionamientoRepositorio {
 
-    // Regresa una lista con todos los espacios de almacenamiento
     List<Espacio> obtenerEspacios();
 
-    // Recibe el objeto Movimiento completo
     void registrarEntrada(Movimiento movimiento);
 
-    //Recibe el Movimiento ya calculado y actualiza el registro en la base de datos
     void registrarSalida(Movimiento movimiento);
 
-    //@Param: se usa cuando el metodo tiene varios valores primitivos
-    //Le da nombre explícito a cada uno para que el XML los identifique con #{idEspacio} y #{ocupado}.
     void actualizarOcupacionEspacio(@Param("idEspacio") Integer idEspacio, @Param("ocupado") Boolean ocupado);
 
-    // Regresa null si el vehículo no está dentro del estacionamiento actualmente.
     Movimiento obtenerMovimientoActivoPorVehiculo(@Param("idVehiculo") Integer idVehiculo);
 }

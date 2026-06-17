@@ -24,8 +24,8 @@ public class EstacionamientoServicio {
     private RestTemplate restTemplate;
 
     // URLs de los otros microservicios
-    private final String URL_USUARIOS = "http://localhost:8081/api/usuarios";
-    private final String URL_VEHICULOS = "http://localhost:8082/api/vehiculos";
+    private final String URL_USUARIOS = "http://app-usuarios:8081/api/usuarios";
+    private final String URL_VEHICULOS = "http://app-vehiculos:8082/api/vehiculos";
 
     //Obtiene y devuelve todos los espacios del almacenamiento
     public List<Espacio> consultarEspacios() {

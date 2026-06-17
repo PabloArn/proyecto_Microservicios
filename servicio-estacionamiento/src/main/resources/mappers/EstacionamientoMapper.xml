@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mx.uv.sicae.servicio_estacionamiento.repositorio.EstacionamientoRepositorio">
+
+    <select id="obtenerEspacios" resultType="mx.uv.sicae.servicio_estacionamiento.modelo.Espacio">
+        SELECT * FROM espacioestacionamiento ORDER BY idEspacio ASC
+    </select>
+
+    <insert id="registrarEntrada" useGeneratedKeys="true" keyProperty="idMovimiento" keyColumn="idMovimiento">
+        INSERT INTO movimiento (idVehiculo, tiempoEntrada, tarifaHora, tiempoCreacion, idEspacio)
+        VALUES (#{idVehiculo}, #{tiempoEntrada}, #{tarifaHora}, #{tiempoCreacion}, #{idEspacio})
+    </insert>
+
+    <update id="registrarSalida">
+        UPDATE movimiento
+        SET tiempoSalida = #{tiempoSalida},
+            minutosEstacionado = #{minutosEstacionado},
+            horasCobradas = #{horasCobradas},
+            costoTotal = #{costoTotal},
+            tiempoActualizacion = #{tiempoActualizacion}
+        WHERE idMovimiento = #{idMovimiento}
+    </update>
+
+    <update id="actualizarOcupacionEspacio">
+        UPDATE espacioestacionamiento
+        SET ocupado = #{ocupado}
+        WHERE idEspacio = #{idEspacio}
+    </update>
+
+    <select id="obtenerMovimientoActivoPorVehiculo" resultType="mx.uv.sicae.servicio_estacionamiento.modelo.Movimiento">
+        SELECT * FROM movimiento
+        WHERE idVehiculo = #{idVehiculo} AND tiempoSalida IS NULL
+        LIMIT 1
+    </select>
+
+</mapper>

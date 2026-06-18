@@ -1,7 +1,8 @@
 package mx.uv.sicae.servicio_vehiculos.modelo;
 
+// Representa un vehículo registrado en el sistema SICAE.
 public class Vehiculo {
-    
+  
     private Integer idVehiculo;
     private Integer idUsuario;
     private String claveVehiculo;

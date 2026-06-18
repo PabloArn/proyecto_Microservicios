@@ -3,15 +3,18 @@
 
 <mapper namespace="mx.uv.sicae.servicio_vehiculos.repositorio.VehiculoRepositorio">
 
+    <!--QUERY 1: BUSCAR POR PLACA-->
     <select id="buscarPorPlaca" resultType="mx.uv.sicae.servicio_vehiculos.modelo.Vehiculo">
         SELECT * FROM vehiculo WHERE placa = #{placa}
     </select>
 
+     <!--QUERY 2: CONTAR VEHÍCULOS ACTIVOS-->
     <select id="contarVehiculosActivos" resultType="int">
         SELECT COUNT(*) FROM vehiculo 
         WHERE idUsuario = #{idUsuario} AND estatus = b'1'
     </select>
 
+    <!--QUERY 3: LISTAR VEHÍCULOS DE UN USUARIO-->
     <select id="buscarVehiculosPorUsuario" resultType="mx.uv.sicae.servicio_vehiculos.modelo.Vehiculo">
         SELECT 
             v.idVehiculo,
@@ -32,11 +35,13 @@
         WHERE v.idUsuario = #{idUsuario}
     </select>
 
+    <!--QUERY 4: REGISTRAR VEHÍCULO-->
     <insert id="registrarVehiculo" useGeneratedKeys="true" keyProperty="idVehiculo">
         INSERT INTO vehiculo (idUsuario, claveVehiculo, idModelo, placa, color, anio, descripcion, estatus)
         VALUES (#{idUsuario}, #{claveVehiculo}, #{idModelo}, #{placa}, #{color}, #{anio}, #{descripcion}, b'1')
     </insert>
 
+    <!--QUERY 5: EDITAR VEHÍCULO-->
     <update id="editarVehiculo">
         UPDATE vehiculo 
         SET 
@@ -48,6 +53,7 @@
         WHERE idVehiculo = #{idVehiculo} AND idUsuario = #{idUsuario}
     </update>
 
+    <!--QUERY 6: CAMBIAR ESTATUS-->
     <update id="cambiarEstatus">
         UPDATE vehiculo 
         SET estatus = CASE WHEN estatus = b'1' THEN b'0' ELSE b'1' END

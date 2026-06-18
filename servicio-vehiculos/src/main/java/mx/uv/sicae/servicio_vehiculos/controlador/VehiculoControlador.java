@@ -18,9 +18,11 @@ public class VehiculoControlador {
     @Autowired
     private VehiculoServicio vehiculoServicio;
 
+    //Para extraer idUsuario del token
     @Autowired
     private UtilidadJwt utilidadJwt;
 
+    // Metodo reutilizable para extraer el ID del Token
     private Integer obtenerIdUsuarioDesdeToken(String tokenHeader) {
         if (tokenHeader == null || !tokenHeader.startsWith("Bearer ")) {
             throw new RuntimeException("Acceso denegado: Token ausente o formato incorrecto.");
@@ -29,6 +31,7 @@ public class VehiculoControlador {
         return utilidadJwt.extraerClaims(tokenPuro).get("idUsuario", Integer.class);
     }
 
+    // Lista todos los vehículos del usuario autenticado
     @GetMapping
     public ResponseEntity<?> obtenerMisVehiculos(@RequestHeader("Authorization") String authHeader) {
         try {
@@ -42,6 +45,7 @@ public class VehiculoControlador {
         }
     }
 
+    // Registra un nuevo vehículo para el usuario autenticado
     @PostMapping
     public ResponseEntity<?> registrarVehiculo(@RequestHeader("Authorization") String authHeader, @RequestBody Vehiculo vehiculo) {
         try {
@@ -60,6 +64,7 @@ public class VehiculoControlador {
         }
     }
 
+    // Edita los datos de un vehículo específico del usuario autenticado
     @PutMapping("/{idVehiculo}")
     public ResponseEntity<?> editarVehiculo(
             @RequestHeader("Authorization") String authHeader, 
@@ -81,6 +86,7 @@ public class VehiculoControlador {
         }
     }
 
+    // Activa o desactiva un vehículo
     @PutMapping("/estatus/{idVehiculo}")
     public ResponseEntity<?> cambiarEstatus(
             @RequestHeader("Authorization") String authHeader, 
